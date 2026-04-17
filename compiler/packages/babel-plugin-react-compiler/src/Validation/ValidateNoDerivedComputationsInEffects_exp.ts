@@ -475,28 +475,33 @@ function validateEffect(
           return sourceMetadata?.place.identifier.name?.value;
         })
         .filter(Boolean)
+        .map(name => `\`${name}\``)
         .join(', ');
 
-      let description;
-
+      let sourceDescription: string;
       if (derivedSetStateCall.typeOfValue === 'fromProps') {
-        description = `From props: [${derivedDepsStr}]`;
+        sourceDescription = `the prop${derivedSetStateCall.sourceIds.size === 1 ? '' : 's'} ${derivedDepsStr}`;
       } else if (derivedSetStateCall.typeOfValue === 'fromState') {
-        description = `From local state: [${derivedDepsStr}]`;
+        sourceDescription = `the local state value${derivedSetStateCall.sourceIds.size === 1 ? '' : 's'} ${derivedDepsStr}`;
       } else {
-        description = `From props and local state: [${derivedDepsStr}]`;
+        sourceDescription = `the props and local state (${derivedDepsStr})`;
       }
 
       context.errors.pushDiagnostic(
         CompilerDiagnostic.create({
-          description: `Derived values (${description}) should be computed during render, rather than in effects. Using an effect triggers an additional render which can hurt performance and user experience, potentially briefly showing stale values to the user`,
+          description:
+            `This value is derived from ${sourceDescription}, so it should be computed during render instead of inside an effect. ` +
+            `Running a derived computation in an effect schedules an unnecessary extra render and can briefly show stale values to the user. ` +
+            `Replace the \`useState\` + \`useEffect\` pair with a plain \`const\` (or \`useMemo\` if the computation is expensive) that is recomputed from the same source(s) during render. ` +
+            `See https://react.dev/learn/you-might-not-need-an-effect#updating-state-based-on-props-or-state for more details`,
           category: ErrorCategory.EffectDerivationsOfState,
           reason:
             'You might not need an effect. Derive values in render, not effects.',
         }).withDetails({
           kind: 'error',
           loc: derivedSetStateCall.value.callee.loc,
-          message: 'This should be computed during render, not in an effect',
+          message:
+            'Derive this value during render instead of updating state from an effect',
         }),
       );
     }
