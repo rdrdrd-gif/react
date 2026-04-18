@@ -469,34 +469,55 @@ function validateEffect(
           .length -
           1
     ) {
-      const derivedDepsStr = Array.from(derivedSetStateCall.sourceIds)
+      const derivedDeps = Array.from(derivedSetStateCall.sourceIds)
         .map(sourceId => {
           const sourceMetadata = context.derivationCache.cache.get(sourceId);
           return sourceMetadata?.place.identifier.name?.value;
         })
-        .filter(Boolean)
-        .join(', ');
+        .filter((name): name is string => Boolean(name));
+      const derivedDepsStr = derivedDeps.join(', ');
+      const docsLink =
+        'See https://react.dev/learn/you-might-not-need-an-effect#updating-state-based-on-props-or-state';
 
-      let description;
+      let description: string;
+      let inlineMessage: string;
 
       if (derivedSetStateCall.typeOfValue === 'fromProps') {
-        description = `From props: [${derivedDepsStr}]`;
+        description =
+          `This state is computed from props (${derivedDepsStr}) and kept in sync with an ` +
+          `effect. Props are already reactive, so compute this value directly during ` +
+          `render instead of mirroring it into state — this removes the redundant ` +
+          `useState plus useEffect pair and avoids the extra render that can briefly ` +
+          `show stale values to users. ${docsLink}`;
+        inlineMessage = `This is computed from props (${derivedDepsStr}) — derive it during render instead of in an effect`;
       } else if (derivedSetStateCall.typeOfValue === 'fromState') {
-        description = `From local state: [${derivedDepsStr}]`;
+        description =
+          `This state is computed from other local state (${derivedDepsStr}) and kept in ` +
+          `sync with an effect. Compute the value directly during render (or wrap it in ` +
+          `useMemo only if the computation is expensive) instead of mirroring it into ` +
+          `another useState — this avoids the redundant state and the extra render the ` +
+          `effect triggers, which can briefly show stale values to users. ${docsLink}`;
+        inlineMessage = `This is computed from local state (${derivedDepsStr}) — derive it during render instead of in an effect`;
       } else {
-        description = `From props and local state: [${derivedDepsStr}]`;
+        description =
+          `This state is computed from props and local state (${derivedDepsStr}) and kept ` +
+          `in sync with an effect. Both props and state are already reactive, so compute ` +
+          `this value directly during render instead of mirroring it into state — this ` +
+          `removes the redundant useState plus useEffect pair and avoids the extra ` +
+          `render that can briefly show stale values to users. ${docsLink}`;
+        inlineMessage = `This is computed from props and local state (${derivedDepsStr}) — derive it during render instead of in an effect`;
       }
 
       context.errors.pushDiagnostic(
         CompilerDiagnostic.create({
-          description: `Derived values (${description}) should be computed during render, rather than in effects. Using an effect triggers an additional render which can hurt performance and user experience, potentially briefly showing stale values to the user`,
+          description,
           category: ErrorCategory.EffectDerivationsOfState,
           reason:
             'You might not need an effect. Derive values in render, not effects.',
         }).withDetails({
           kind: 'error',
           loc: derivedSetStateCall.value.callee.loc,
-          message: 'This should be computed during render, not in an effect',
+          message: inlineMessage,
         }),
       );
     }
