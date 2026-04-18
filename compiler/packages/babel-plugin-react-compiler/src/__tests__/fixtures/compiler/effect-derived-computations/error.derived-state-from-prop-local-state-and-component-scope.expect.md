@@ -38,13 +38,13 @@ Found 1 error:
 
 Error: You might not need an effect. Derive values in render, not effects.
 
-Derived values (From props and local state: [firstName, lastName]) should be computed during render, rather than in effects. Using an effect triggers an additional render which can hurt performance and user experience, potentially briefly showing stale values to the user.
+This state is computed from props and local state (firstName, lastName) and kept in sync with an effect. Both props and state are already reactive, so compute this value directly during render instead of mirroring it into state — this removes the redundant useState plus useEffect pair and avoids the extra render that can briefly show stale values to users. See https://react.dev/learn/you-might-not-need-an-effect#updating-state-based-on-props-or-state.
 
 error.derived-state-from-prop-local-state-and-component-scope.ts:11:4
    9 |
   10 |   useEffect(() => {
 > 11 |     setFullName(firstName + ' ' + middleName + ' ' + lastName);
-     |     ^^^^^^^^^^^ This should be computed during render, not in an effect
+     |     ^^^^^^^^^^^ This is computed from props and local state (firstName, lastName) — derive it during render instead of in an effect
   12 |   }, [firstName, middleName, lastName]);
   13 |
   14 |   return (
